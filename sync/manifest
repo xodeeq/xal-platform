@@ -1,0 +1,11 @@
+# Spec files a consuming service vendors into its docs/platform/ (read-only copies).
+# Paths are relative to the platform repo's spec/ dir. Lines starting with # and
+# blank lines are ignored. Keep this list in sync with spec/README.md.
+README.md
+process-guide.md
+service-conventions.md
+deployment-conventions.md
+adr-discipline.md
+adr-template.md
+concept-note-structure.md
+session-ritual.md
