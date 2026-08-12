@@ -57,3 +57,30 @@ is a clean no-op.
 [`manifest`](manifest) lists the vendored files; keep it aligned with
 [`../spec/README.md`](../spec/README.md). The manifest is the contract for "what a service
 must carry a copy of" — add a spec file to both when it becomes a shared obligation.
+
+### Rule: a manifest file's relative links may not escape the vendored set
+
+A manifest file is copied **verbatim** into a consumer's `docs/platform/`. Its links travel
+with it, but its *neighbours* do not: inside a consumer, `../` resolves to that service's
+`docs/`, not to this repo's root. So a link that is perfectly correct here can be broken in
+every consumer simultaneously — and it will look fine to anyone reviewing it here, which is
+exactly how it goes unnoticed.
+
+Therefore, in any file listed in [`manifest`](manifest):
+
+- **Allowed:** a relative link to another file **in the vendored set**, always as a bare
+  sibling (`service-conventions.md`) — the whole set lands in one flat directory.
+- **Not allowed:** any relative link outside that set — `../VERSION`, `../sync/SYNC.md`,
+  `../CLAUDE.md`, `../adr/0001-….md`. Use an absolute
+  `https://github.com/xodeeq/xal-platform/blob/main/…` URL (this repo is public, so no
+  credential is needed to follow it), or don't make it a link.
+- **Move the link text too.** These links commonly use the path as their label
+  (`` [`../VERSION`](../VERSION) ``); retargeting the URL alone leaves a label still
+  displaying a path that is wrong in a consumer.
+
+Anywhere *outside* the manifest set — this file, `../README.md`, `../CLAUDE.md`, `../adr/` —
+ordinary relative links are correct and preferred; those files are never vendored.
+
+[`../scripts/check.sh`](../scripts/check.sh) **gate 2** enforces this. It exists because
+three such links shipped in `spec/README.md` and reached auth's `docs/platform/` before a
+link check caught them (fixed in `0.1.1`).

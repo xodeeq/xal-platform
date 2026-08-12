@@ -3,8 +3,8 @@
 This is the **source of truth** for everything every xal service must conform to,
 independent of its implementation language. A service consumes these by vendoring a
 read-only copy into its own `docs/platform/` via the sync mechanism
-([`../sync/SYNC.md`](../sync/SYNC.md)) — it never edits a vendored copy. Edit the spec
-**here**.
+([`sync/SYNC.md`](https://github.com/xodeeq/xal-platform/blob/main/sync/SYNC.md)) — it never
+edits a vendored copy. Edit the spec **here**.
 
 > **The rule (ADR-0009):** the platform owns the SPEC (these files); each service owns
 > its language's IMPLEMENTATION. Nothing here is normatively .NET-specific — auth is
@@ -20,5 +20,13 @@ read-only copy into its own `docs/platform/` via the sync mechanism
 | [`concept-note-structure.md`](concept-note-structure.md) | The learning curriculum: the fixed concept-note form and the onboarding-path discipline. |
 | [`session-ritual.md`](session-ritual.md) | The begin/wrap work-session ritual, the handoff format, and the ephemeral-briefs lifecycle. |
 
-Changing any file here is a spec change: bump the repo [`../VERSION`](../VERSION) per the
-policy in [`../CLAUDE.md`](../CLAUDE.md) so consumers can detect the drift.
+Changing any file here is a spec change: bump the repo
+[`VERSION`](https://github.com/xodeeq/xal-platform/blob/main/VERSION) per the policy in
+[`CLAUDE.md`](https://github.com/xodeeq/xal-platform/blob/main/CLAUDE.md) so consumers can
+detect the drift.
+
+> **Links in these files must survive vendoring.** A file listed in
+> [`sync/manifest`](https://github.com/xodeeq/xal-platform/blob/main/sync/manifest) is copied
+> verbatim into a consumer's `docs/platform/`, where `../` resolves to *that service's*
+> `docs/` — so a relative link may only point at another file in the vendored set. Anything
+> outside it must be an absolute URL. Enforced by `scripts/check.sh` gate 2.
