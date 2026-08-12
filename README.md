@@ -31,7 +31,9 @@ realization** — clearly labelled as such, never as a normative requirement.
 | [`adr/`](adr/) | This repo's **own** decision log — how the platform governs itself (e.g. the repo structure + sync model). |
 | [`scaffold/`](scaffold/) | The seed a **new** xal service is created from: a `CLAUDE.md` skeleton, the docs structure, the session-ritual commands, the skill stubs, and the vendored-spec landing dir. |
 | [`sync/`](sync/) | The **template + sync** mechanism: how a service pulls spec updates forward, with drift surfaced as a reviewable diff (`platform-sync.sh`). |
+| [`scripts/check.sh`](scripts/check.sh) | This repo's **own gate** — the four quality clauses from `CLAUDE.md` made mechanical (language-agnostic spec · links resolve + the vendored-set rule · scaffold self-consistency · sync round-trip). CI runs this exact script. |
 | [`docs/sessions/`](docs/sessions/) | This repo's own work-session handoff log (the session ritual continues here). |
+| [`docs/lessons.md`](docs/lessons.md) | This repo's capture→review→promote ledger. |
 | [`VERSION`](VERSION) | The platform-spec version a consuming service pins to. |
 
 ## Quickstart
