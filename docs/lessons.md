@@ -1,0 +1,47 @@
+# Lessons log — platform repo
+
+A running ledger of pitfalls, workarounds, repeated explanations, and consequential
+decisions — so none of them evaporate at the end of a session. This is the platform repo's
+**own** ledger (eating the dog food: `spec/session-ritual.md` requires one per repo, and
+`scaffold/docs/lessons.md` seeds it for new services). Service-specific lessons belong in
+that service's ledger, not here.
+
+**The loop: capture → review → promote.**
+
+1. **Capture** (any time): the moment something bites, a workaround goes in, or you find
+   yourself explaining the same thing twice, append a one-line entry here with status `open`.
+2. **Review** (every session, via `/wrap-session`): walk the open entries and decide each
+   one's permanent **home**.
+3. **Promote**: move the lesson into the thing that makes it stick, then flip the entry to
+   `promoted→<link>`. A lesson that stays `open` for many sessions is a signal it needs a
+   decision, not that it should be forgotten.
+
+**Homes** (where a lesson goes to live permanently):
+
+| Home | Use when the lesson is… | Example |
+|---|---|---|
+| **script** | a mechanical, repeatable task | the sync round-trip → `sync/platform-sync.sh` |
+| **skill / command** | a recurring procedure or judgement | end-of-session ritual → `/wrap-session` |
+| **guardrail** (CLAUDE.md) | an always-true rule | "no service-language specifics in `spec/`" |
+| **ADR** | an architectural decision with tradeoffs | the repo structure + sync model |
+
+> **Never let a temporary workaround outlive the session that created it** without a tracked
+> entry here to remove it.
+
+## Format
+
+One line per entry:
+
+```
+date | context | lesson | proposed home (script/skill/guardrail/ADR) | status (open / promoted→link)
+```
+
+## Entries
+
+```
+2026-08-12 | Sync scope, `.claude/` is a seed-time copy that nothing checks | `sync/manifest` covers `spec/` → `docs/platform/` and NOTHING else, so everything under `scaffold/.claude/` (skills, `/begin-session`, `/wrap-session`) is a one-time `cp -r` at service creation that `--check` never inspects. It will therefore drift silently and permanently across auth and `xal-registry-api` — and it is already drifting: auth's `.claude/commands/wrap-session.md` and `begin-session.md` restate the ritual that `spec/session-ritual.md` now owns canonically, with no mechanism to notice when the two disagree. XCOS §6.2 makes this worse by proposing to add `.claude/agents/` (`implementer`, `test-writer`, `contract-reviewer`, `docs-writer`) "in each service repo", which bypasses ADR-0001 entirely: per-repo agent definitions are exactly the copy-paste drift the platform repo exists to stop. Agent definitions belong in `scaffold/.claude/agents/` like every other seeded asset. | **ADR** (platform) — decide between: (a) EXTEND the sync model to cover `.claude/` (needs a second manifest or a manifest with destination paths, plus a rule for the parts a service legitimately customizes — auth's `/wrap-session` names `scripts/check.sh` and its own grep, which a Rust service must not inherit verbatim); (b) SPLIT into a synced normative core + an explicitly service-owned overlay; or (c) ACCEPT the drift deliberately and say so, so nobody assumes `--check` covers it. Whichever wins, `scaffold/.claude/agents/` is where agent definitions go. | open — surfaced during the auth-as-consumer retrofit (auth session 17). Do NOT add per-repo agent definitions before this is decided
+2026-08-12 | Frontmatter schema is a PLATFORM SPEC change, not a company-repo change | `frontmatter-schema.md` (XCOS design doc) mandates required YAML frontmatter keys on every doc. But the ADR format, the concept-note format and the session/handoff format are **canonical in `spec/`** (`adr-discipline.md`, `adr-template.md`, `concept-note-structure.md`, `session-ritual.md`), so mandating frontmatter on them is an additive obligation on every consuming service — a spec change, propagated by `VERSION`, not something a company repo can decree unilaterally. Scale check: **zero of auth's ~45 docs have frontmatter today**, and `xal-registry-api` will inherit whatever is decided. Enabling a checker before the spec and the backfill land would red every service's gate at once. | **ADR** (platform), then a strict ordering when it is picked up: (1) platform ADR accepting the schema → (2) update `spec/adr-discipline.md`, `spec/concept-note-structure.md`, `spec/session-ritual.md` with the required keys → (3) bump `VERSION` **minor** (additive obligation) → (4) each service syncs and backfills its docs in ONE PR → (5) only then enable `frontmatter-check.sh` as a gate. Never enable the checker before step 4 completes in that service | open — surfaced during the auth-as-consumer retrofit (auth session 17)
+2026-08-12 | The wikilink ban already has a false positive, and vendoring DOUBLED it | `frontmatter-schema.md` rule 4 fails the build on "any `[[wikilink]]` syntax found anywhere in the repo". `spec/deployment-conventions.md:209` contains `` `[[http_service.checks]]` `` — TOML array-of-tables syntax naming a real `fly.toml` construct, inside **inline code on a prose line** (verified: zero fence markers precede it, so it is NOT in a fenced block — a fenced-block-only skip would still fail it). It is the only `[[…]]` in either repo, and because auth now vendors the spec it exists in **two** places: the canonical `spec/deployment-conventions.md:209` and the read-only copy at `xal-auth/docs/platform/deployment-conventions.md:209`. A naive checker fails auth for text auth is forbidden to edit. | guardrail (checker implementation) — `frontmatter-check.sh` rule 4 must strip **fenced blocks AND inline-code spans** before scanning; additionally, a checker run inside a consumer must skip `docs/platform/` entirely, since those files are read-only and a finding there is unfixable in that repo | open — do not implement rule 4 as a bare `grep -r '\[\['`
+2026-08-12 | The agent EXECUTION layer is unspecified (XCOS §11.2) | XCOS names GitHub Actions as the scheduler and Claude Code as the executor, but never states the mechanism by which a cron actually *runs* an agent — the gap between "a workflow fires" and "an agent does work with repo write access". Decided: **`anthropics/claude-code-action@v1`**, authenticated with **`CLAUDE_CODE_OAUTH_TOKEN`** (a repo/org secret), which is what makes every XCOS recurring pipeline (weekly content, weekly retro, release-tag security scan) actually executable rather than aspirational. | **ADR in `xal-company`** (planned as its ADR-0003) — must cover: the action + auth mechanism, which secret lives where and its scope, per-workflow tool/permission scoping, cost controls (an agent on a cron is an unbounded spend surface), and the failure path when a scheduled agent run fails silently | open — **recorded here only because `xal-company` was explicitly out of scope for auth session 17**; this entry's real home is that repo's ledger/ADR. Move it there when `xal-company` is stood up next session, and delete this row
+2026-08-12 | Vendored spec carries links that dangle in every consumer | `spec/README.md` links `../sync/SYNC.md`, `../VERSION` and `../CLAUDE.md` — all correct inside this repo, all broken once the file is vendored to a consumer's `docs/platform/README.md`, where `../` resolves to the consumer's `docs/`. Found by a link check immediately after auth's first real sync; it will hit `xal-registry-api` identically. The general rule: **a file in `sync/manifest` may only use relative links that stay INSIDE the vendored set** (siblings like `service-conventions.md` are fine); anything pointing outside must be an absolute URL to this repo, or not a link at all. | script (add a link check to the sync round-trip so a manifest file with an escaping relative link fails here, not in a consumer) + a `spec/` fix | open — the fix is a `spec/` change and therefore needs its own PR + a **patch** `VERSION` bump (clarification, no new obligation); deliberately NOT folded into auth session 17's PR, which had to vendor the spec byte-identically as-is
+```

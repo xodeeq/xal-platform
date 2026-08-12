@@ -31,7 +31,7 @@ platform rule yet — it belongs in that service.
 |---|---|---|
 | process guide, service/deployment conventions, ADR + concept + session discipline | **`spec/` in this repo** | the forward source of truth |
 | the auth realizations (`scripts/check.sh`, `Directory.Packages.props`, the .NET layout, auth's specific ADRs/concept notes) | the `auth` repo | the reference *implementation*, not duplicated here |
-| `process-guide.md` legacy copy at `xal/docs/` | de-facto pre-extraction location | left in place this session; removed when auth becomes a consumer (tracked) |
+| ~~`process-guide.md` legacy copy at `xal/docs/`~~ | — | **Gone.** The pre-extraction workspace-root copy no longer exists; `spec/process-guide.md` is the only one. Auth reads it from its vendored `docs/platform/`. |
 
 When a service "syncs", it vendors a **read-only copy** of `spec/` into its own
 `docs/platform/`. Edit the spec **here**; never edit a vendored copy in a service.
@@ -68,8 +68,15 @@ detect drift. Record notable bumps in `adr/` or a session handoff.
 - **Extraction (auth session 16, 2026-06-18):** repo stood up; `spec/` canonical; the
   scaffold and `sync/` mechanism built and verified by a round-trip. ADR-0009 fulfilled
   (direction → realized structure) and recorded as `adr/0001`.
-- **Next:** (1) auth-as-consumer retrofit (vendor spec into `auth/docs/platform/`, wire
-  `--check` into auth CI, slim auth's in-repo skill bodies to reference the synced spec,
-  remove the `xal/docs/process-guide.md` duplication); (2) lift the reusable `infra/`
-  observability Terraform modules into a `scaffold/` module; (3) a generic, xal-stripped
-  export for unrelated projects (separate effort).
+- **Auth-as-consumer retrofit (auth session 17, 2026-08-12): DONE.** Auth vendors the spec
+  read-only into `docs/platform/`, pins `0.1.0` in `docs/platform/sync.config`, and gates on
+  `platform-sync.sh --check` in both `scripts/check.sh` (gate 7, platform located via
+  `XAL_PLATFORM_DIR`) and `ci.yml` (a second, tokenless `actions/checkout` of this public
+  repo). Auth's skill bodies now reference the vendored copies instead of restating them,
+  and the `xal/docs/process-guide.md` duplication is gone. **The sync contract is now
+  exercised by a real service, so a `spec/` change here breaks auth's build until auth
+  syncs — bump `VERSION` deliberately.**
+- **Next:** (1) lift the reusable `infra/` observability Terraform modules into a
+  `scaffold/` module; (2) decide whether `sync/` should cover `.claude/` or whether that
+  drift is accepted deliberately — needs an ADR (see `docs/lessons.md`); (3) a generic,
+  xal-stripped export for unrelated projects (separate effort).
