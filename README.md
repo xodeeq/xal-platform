@@ -64,8 +64,15 @@ how to work *in* this repo.
 
 ## Status
 
-Extracted from auth on 2026-06-18 (auth session 16; ADR-0009 fulfilled). This is the
-**repo + scaffold + sync** slice: the spec is canonical here, the scaffold and sync
-mechanism are live. Retrofitting auth itself to *consume* the synced spec (rather than
-hold the originals) is a tracked follow-up — until then auth keeps its in-repo copies
-and this repo is the forward source of truth.
+Extracted from auth on 2026-06-18 (auth session 16; ADR-0009 fulfilled): the spec is
+canonical here, and the scaffold and sync mechanism are live.
+
+**Auth is now a real consumer** (auth session 17, 2026-08-12). It vendors this spec
+read-only into its own `docs/platform/`, pins the version in `docs/platform/sync.config`,
+and runs `platform-sync.sh --check` as a gate in both `scripts/check.sh` and CI — so a
+service falling behind the spec is a **gating, reviewable state rather than a silent
+one**. The round trip is therefore proven end-to-end by a real service, not just by the
+scaffold: this repo is the source of truth, and drift from it now breaks a build.
+
+`xal-registry-api` (Rust) is the next consumer, and will be the first to exercise the
+spec against a non-.NET implementation.
