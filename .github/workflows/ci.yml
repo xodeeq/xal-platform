@@ -1,0 +1,31 @@
+name: CI
+
+# Platform repo CI. The Definition of Done is a single script — scripts/check.sh —
+# which is the one source of truth for "the gates": the four clauses CLAUDE.md names
+# as this repo's quality bar (language-agnostic spec, links resolve, scaffold
+# self-consistency, sync round-trip). CI invokes that exact script so "green locally"
+# equals "green in CI" byte for byte. To change a gate, change the script, not this
+# file — the same contract the auth service repo uses.
+#
+# There is no build and no test suite here: this repo is docs/tooling/process. The
+# script needs only bash, awk, grep, diff and mktemp, all present on the runner, so
+# there is no toolchain setup step.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run gates (scripts/check.sh)
+        run: ./scripts/check.sh
