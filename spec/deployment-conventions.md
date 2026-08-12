@@ -125,7 +125,7 @@ from application startup code.
    minimal, non-root, attack-surface-reduced artifact — which means **no SDK and often no
    shell** (auth uses the chiseled .NET runtime). You therefore *cannot* run the framework's
    "apply migrations" CLI inside it (`dotnet ef database update`, `alembic upgrade`,
-   `migrate`, etc. all need tooling the image deliberately omits).
+   `migrate`, etc. all need tooling the image deliberately omits). <!-- auth-ref -->
 2. **Migrations must run exactly once per deploy, before traffic, with a clean failure
    mode.** Applying them from application startup races across replicas and couples "can the
    app boot" to "can the app migrate"; a failed migration should fail the *deploy*, loudly,
@@ -149,7 +149,7 @@ has the SDK) and invoke it as the platform's release hook.
   app uses), so the release command is a **bare `/app/efbundle`** — no arguments and no shell
   to expand `--connection "$VAR"` (the chiseled image has neither).
 
-**Gotchas the reference hit (so you don't).**
+**Gotchas the reference hit (so you don't).** <!-- auth-ref -->
 - **Idempotency is mandatory** — the release step re-runs on *every* deploy, so applying
   migrations to an already-migrated database must be a clean no-op, not an error. Validate it
   by running the artifact **twice** against the same database in CI/locally.
