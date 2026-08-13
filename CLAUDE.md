@@ -52,7 +52,15 @@ detect drift. Record notable bumps in `adr/` or a session handoff.
 
 - **This repo is docs/tooling/process** — there is no application and no TDD gate. The
   quality bar is: spec stays language-agnostic, links resolve, the scaffold stays
-  self-consistent, and the sync round-trip works (see `sync/SYNC.md`).
+  self-consistent, and the sync round-trip works (see `sync/SYNC.md`). **Those four
+  clauses are now the four gates in [`scripts/check.sh`](scripts/check.sh)**, which CI
+  runs verbatim — so the bar is enforced, not merely stated. Run it before you push; it
+  takes about a second. To change a gate, change the script, not the workflow.
+- **Gate 1 needs your help to stay decidable.** A service-language specific may appear
+  in `spec/` only inside a labelled citation — a `**Auth ref:**` / `**Auth reference.**`
+  region, or a paragraph carrying an explicit `<!-- auth-ref -->` marker for an
+  illustration that legitimately sits in normative prose. Outside those, the grep in
+  "The prime directive" below is a hard failure.
 - **The session ritual still applies.** Work sessions wrap with a handoff in
   `docs/sessions/NN.md` and the same begin/wrap discipline auth uses — that discipline
   is itself one of the assets this repo defines (`spec/session-ritual.md`). Eat the dog
