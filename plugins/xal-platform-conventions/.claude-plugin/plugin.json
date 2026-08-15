@@ -1,0 +1,13 @@
+{
+  "name": "xal-platform-conventions",
+  "displayName": "xal platform service conventions",
+  "version": "0.1.0",
+  "description": "The language-agnostic engineering contract every xal service must satisfy. Install in service repos only.",
+  "author": {
+    "name": "xal",
+    "url": "https://github.com/xodeeq/xal-platform"
+  },
+  "homepage": "https://github.com/xodeeq/xal-platform/tree/main/plugins/xal-platform-conventions",
+  "repository": "https://github.com/xodeeq/xal-platform",
+  "keywords": ["xal", "conventions", "service", "platform"]
+}

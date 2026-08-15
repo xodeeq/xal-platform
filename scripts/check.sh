@@ -15,6 +15,8 @@
 #                                 outside the vendored set          (see GOTCHA below)
 #   3. scaffold self-consistency — scaffold links resolve; manifest ⊆ spec/
 #   4. sync round-trip          — sync into a temp dir, assert --check passes
+#   5. plugin manifests         — `claude plugin validate --strict` on the marketplace
+#                                 and every plugin under plugins/  (see GOTCHA below)
 #
 # GOTCHA (gate 2, the rule that pays for this script): a file in sync/manifest is
 # copied VERBATIM into a consumer's docs/platform/. Its links travel with it but its
@@ -336,7 +338,57 @@ sync_roundtrip_step() {
   return 0
 }
 
+# --- gate 5: plugin manifests -----------------------------------------------------
+# This repo is a plugin MARKETPLACE as well as a spec source: `.claude-plugin/
+# marketplace.json` plus one plugin per directory under `plugins/`. A malformed manifest
+# does not fail loudly — Claude Code skips what it cannot parse — so a service repo would
+# simply not get the conventions skill, silently, and nothing would say why.
+#
+# GOTCHA: the published schema reference and the validator DISAGREE, and the validator is
+# what actually loads the plugin. Two real cases found writing this: `owner` is REQUIRED on
+# a marketplace manifest though the reference's example omits it, and a top-level
+# `displayName` is an unrecognized field the runtime ignores. So validate with the tool,
+# never against the documentation. `--strict` turns those warnings into failures, which is
+# what we want in a gate — an ignored field is a silently missing feature.
+#
+# Skipped (with a warning) when the `claude` CLI is unavailable, matching the Docker-gate
+# precedent in the auth repo: mandatory under CI=true, courteous locally.
+plugin_manifests_step() {
+  if ! command -v claude >/dev/null 2>&1; then
+    if [ "${CI:-}" = "true" ]; then
+      printf '%sThe claude CLI is required in CI to validate plugin manifests.%s\n' "$RED" "$RST"
+      return 1
+    fi
+    printf '%s⚠ claude CLI unavailable — SKIPPING plugin manifest validation.%s\n' "$YEL" "$RST"
+    printf '%s  (This gate is mandatory in CI.)%s\n' "$YEL" "$RST"
+    return 0
+  fi
+
+  local rc=0 target
+  # The marketplace manifest itself.
+  if claude plugin validate . --strict >/dev/null 2>&1; then
+    printf '  %s✔%s marketplace manifest\n' "$GREEN" "$RST"
+  else
+    printf '  %s✗%s marketplace manifest\n' "$RED" "$RST"
+    claude plugin validate . --strict 2>&1 | sed 's/^/      /'
+    rc=1
+  fi
+  # Every plugin in the catalogue.
+  for target in plugins/*/; do
+    [ -d "$target" ] || continue
+    if claude plugin validate "$target" --strict >/dev/null 2>&1; then
+      printf '  %s✔%s %s\n' "$GREEN" "$RST" "${target%/}"
+    else
+      printf '  %s✗%s %s\n' "$RED" "$RST" "${target%/}"
+      claude plugin validate "$target" --strict 2>&1 | sed 's/^/      /'
+      rc=1
+    fi
+  done
+  return "$rc"
+}
+
 # --- run the gates -------------------------------------------------------------
+gate "plugin manifests (claude plugin validate --strict)" plugin_manifests_step
 gate "language-agnostic spec (no .NET-isms as rules)"  spec_language_agnostic_step
 gate "links resolve (+ vendored-set rule)"             links_resolve_step
 gate "scaffold self-consistency"                       scaffold_consistency_step
