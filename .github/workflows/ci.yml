@@ -7,9 +7,16 @@ name: CI
 # equals "green in CI" byte for byte. To change a gate, change the script, not this
 # file — the same contract the auth service repo uses.
 #
-# There is no build and no test suite here: this repo is docs/tooling/process. The
-# script needs only bash, awk, grep, diff and mktemp, all present on the runner, so
-# there is no toolchain setup step.
+# There is no build and no test suite here: this repo is docs/tooling/process. Gates
+# 1-4 need only bash, awk, grep, diff and mktemp, all present on the runner. Gate 5
+# validates the plugin manifests and needs the `claude` CLI, which is installed below —
+# the only toolchain step, and the only INPUT this workflow supplies to the script.
+#
+# Adding gate 5 broke this workflow on its first run, because the gate declared a new
+# input and nothing here provided it. That is the same failure the auth repo hit when a
+# gate input was added to check.sh and only ci.yml was updated while deploy.yml was not.
+# The rule it earns: when a gate gains an input, grep every caller of the script before
+# pushing, because the script cannot see its callers and each fails independently.
 on:
   push:
     branches: [main]
@@ -26,6 +33,11 @@ jobs:
       CI: "true"
     steps:
       - uses: actions/checkout@v4
+
+      # Input for gate 5. `claude plugin validate` is offline schema validation — it
+      # parses manifests and never calls the API — so no credential is needed here.
+      - name: Install the claude CLI (gate 5 input)
+        run: npm install -g @anthropic-ai/claude-code
 
       - name: Run gates (scripts/check.sh)
         run: ./scripts/check.sh

@@ -1,0 +1,16 @@
+{
+  "name": "xal-platform",
+  "owner": {
+    "name": "xal",
+    "url": "https://github.com/xodeeq/xal-platform"
+  },
+  "description": "Language-agnostic engineering conventions distributed to xal service repos.",
+  "plugins": [
+    {
+      "name": "xal-platform-conventions",
+      "description": "The §1-9 service contract every xal service must satisfy, language-agnostic. Service repos only.",
+      "category": "engineering",
+      "source": "./plugins/xal-platform-conventions"
+    }
+  ]
+}
