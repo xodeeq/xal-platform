@@ -1,0 +1,18 @@
+# .xal/gate-inputs — the declared input contract for scripts/check.sh (xal-platform)
+#
+# Every gate in scripts/check.sh that needs something NOT in this repo declares it here,
+# and .xal/check-gate-inputs.sh asserts that every workflow invoking that script supplies
+# it. This file exists because the gate script cannot see its own callers: on 2026-08-15
+# gate 5 gained a dependency on the `claude` CLI, ci.yml did not install it, and the gate
+# failed on its first CI run — the second occurrence of the same failure in four days.
+#
+# Format:  id | detect | required-in-ci | caller-pattern | description
+#   detect          command:<name> | env:<VAR> | none   (how check.sh discovers it)
+#   required-in-ci  yes = the gate FAILS when absent under CI=true; no = it skips
+#   caller-pattern  ERE every caller workflow must match, or `-` for runner-provided
+#
+# Gates 1-4 need only bash, awk, grep, diff and mktemp — all present on any runner, and
+# deliberately so in a repo whose whole point is language neutrality. They are not inputs
+# in the sense this file means: nothing has to be supplied for them to run.
+
+claude-cli | command:claude | yes | npm install -g @anthropic-ai/claude-code | The `claude` CLI, for gate 5 (`claude plugin validate --strict` on the marketplace and every plugin). Offline schema validation only — it never calls the API, so no credential is needed. THIS IS THE INPUT THAT BROKE CI ON 2026-08-15.

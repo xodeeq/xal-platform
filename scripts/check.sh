@@ -387,7 +387,27 @@ plugin_manifests_step() {
   return "$rc"
 }
 
+# --- gate 0: gate inputs are declared and every caller supplies them --------------
+# The meta-gate. Gate 5 above needs the `claude` CLI, which is NOT in this repo — and
+# when it was added on 2026-08-15, ci.yml was not updated to install it, so the gate
+# failed on its first CI run. Four days earlier the identical shape had blocked auth's
+# production deploys for ~3.5h. Twice, because a gate script declares an input in code
+# but nowhere as data, and cannot see its own callers.
+#
+# .xal/gate-inputs declares them; .xal/check-gate-inputs.sh derives what this script
+# actually needs, asserts it is declared, and asserts every workflow invoking this
+# script supplies it. Running FIRST and needing NO inputs of its own is deliberate:
+# a check that catches missing inputs must not be able to have one missing.
+#
+# Canonical copy lives in xcos-core. Do not edit .xal/check-gate-inputs.sh in place.
+gate_inputs_step() {
+  [ -f .xal/check-gate-inputs.sh ] || {
+    printf '%s  .xal/check-gate-inputs.sh is missing%s\n' "$RED" "$RST"; return 1; }
+  bash .xal/check-gate-inputs.sh
+}
+
 # --- run the gates -------------------------------------------------------------
+gate "gate inputs declared + every caller wired"          gate_inputs_step
 gate "plugin manifests (claude plugin validate --strict)" plugin_manifests_step
 gate "language-agnostic spec (no .NET-isms as rules)"  spec_language_agnostic_step
 gate "links resolve (+ vendored-set rule)"             links_resolve_step
