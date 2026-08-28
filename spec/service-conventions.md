@@ -81,18 +81,26 @@ A service is a well-behaved container:
 - *Enforce:* CI builds the image (the docker gate). SIGTERM drain behavior is
   **[review-only]** (hard to assert cheaply).
 
-## 7. Versioned CloudEvents-style domain-event envelope — **[CI-enforceable]**
+## 7. Versioned CloudEvents domain-event envelope — **[CI-enforceable]**
 Cross-service effects happen by **emitting events**, never synchronous calls out of
-the service. Every event is wrapped in a standard versioned envelope with
-CloudEvents fields (`id`, `source`, `type`, `specversion`, `time`, `subject`, a
-`tenant` extension, typed `data`). Event `type` is itself versioned
-(`auth.session-revoked.v1`) so the contract evolves additively. Transport/broker is
-deferred — only the **shape** is fixed.
-- **Auth ref:** `src/Auth.Domain/Events/EventEnvelope.cs` (the envelope),
+the service. Every event is wrapped in a **CloudEvents v1.0 envelope carried in
+structured content mode** — the full attribute set, the registered extensions used, and
+the rule that consumers dispatch on the envelope rather than on transport-native metadata
+are the contract, and they are specified in
+[platform ADR-0002](https://github.com/xodeeq/xal-platform/blob/main/adr/0002-domain-event-envelope-contract.md).
+Event `type` is itself versioned (`auth.session-revoked.v1`) so the contract evolves
+additively. **The transport behind the envelope is a per-service decision** and is
+deliberately not fixed here.
+- **Auth ref:** `src/Auth.Domain/Events/EventEnvelope.cs` (the envelope type),
   `IDomainEvent.cs` (versioned `EventType`), `AuthEvents.cs` (the events),
-  `src/Auth.Infrastructure/Messaging/EventPublisher.cs` (wraps + sets `source`).
+  `src/Auth.Infrastructure/Messaging/EventPublisher.cs` (the publisher port's only
+  adapter — **a log-only seam: it records a few fields and does not yet construct the
+  envelope**; completing that path is auth ADR-0019's work).
 - *Enforce:* schema-validate emitted envelopes against the CloudEvents shape; assert
-  `type` is versioned. (The shape is checkable now; the broker is not yet built.)
+  `type` is versioned. **Not yet implementable — no service constructs an envelope
+  today**, which is precisely why the stale Auth-ref above went unnoticed: a convention
+  nothing emits against cannot detect that it is unimplemented. Buildable as soon as the
+  first service emits.
 
 ## 8. The purity principle — **[review-only]**
 The **domain layer never touches wall-clock time, randomness, or I/O** — these are
