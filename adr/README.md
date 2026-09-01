@@ -11,6 +11,7 @@ live in *that service's* `docs/adr/`, not here. A decision lands here only when 
 | # | Decision | Status |
 |---|---|---|
 | [0001](0001-platform-repo-and-sync-model.md) | Platform repo structure + template/sync consumption model (realizes auth ADR-0009) | Accepted |
+| [0002](0002-domain-event-envelope-contract.md) | The domain-event envelope contract: CloudEvents v1.0 in structured content mode, the registered extensions used, and the consumers-never-read-transport-metadata rule (realizes `spec` §7; consumed by auth ADR-0019, which chooses a transport behind it) | Proposed |
 
 > **Provenance.** The platform was discovered while building **auth** (service #1), so its
 > founding cross-service decisions were first recorded as *auth* ADRs — notably auth
