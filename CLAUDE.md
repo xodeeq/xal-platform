@@ -53,8 +53,10 @@ detect drift. Record notable bumps in `adr/` or a session handoff.
 - **This repo is docs/tooling/process** — there is no application and no TDD gate. The
   quality bar is: spec stays language-agnostic, links resolve, the scaffold stays
   self-consistent, and the sync round-trip works (see `sync/SYNC.md`). **Those four
-  clauses are now the four gates in [`scripts/check.sh`](scripts/check.sh)**, which CI
-  runs verbatim — so the bar is enforced, not merely stated. Run it before you push; it
+  clauses are four of the gates in [`scripts/check.sh`](scripts/check.sh)**, which CI runs
+  verbatim — so the bar is enforced, not merely stated. The repo has since grown two more
+  (the declared-input meta-gate of ADR-0005, and plugin-manifest validation), so **the
+  script is the list and this sentence is not**: read the gate names off `check.sh`. Run it before you push; it
   takes about a second. To change a gate, change the script, not the workflow.
 - **Gate 1 needs your help to stay decidable.** A service-language specific may appear
   in `spec/` only inside a labelled citation — a `**Auth ref:**` / `**Auth reference.**`
@@ -77,7 +79,9 @@ detect drift. Record notable bumps in `adr/` or a session handoff.
   scaffold and `sync/` mechanism built and verified by a round-trip. ADR-0009 fulfilled
   (direction → realized structure) and recorded as `adr/0001`.
 - **Auth-as-consumer retrofit (auth session 17, 2026-08-12): DONE.** Auth vendors the spec
-  read-only into `docs/platform/`, pins `0.1.0` in `docs/platform/sync.config`, and gates on
+  read-only into `docs/platform/`, records its pinned version in `docs/platform/sync.config`
+  — **read the pin from that file, never from here**; this line said `0.1.0` for a month
+  after auth had moved to `0.3.0` — and gates on
   `platform-sync.sh --check` in both `scripts/check.sh` (gate 7, platform located via
   `XAL_PLATFORM_DIR`) and `ci.yml` (a second, tokenless `actions/checkout` of this public
   repo). Auth's skill bodies now reference the vendored copies instead of restating them,
