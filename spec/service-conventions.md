@@ -81,26 +81,25 @@ A service is a well-behaved container:
 - *Enforce:* CI builds the image (the docker gate). SIGTERM drain behavior is
   **[review-only]** (hard to assert cheaply).
 
-## 7. Versioned CloudEvents domain-event envelope — **[CI-enforceable]**
-Cross-service effects happen by **emitting events**, never synchronous calls out of
-the service. Every event is wrapped in a **CloudEvents v1.0 envelope carried in
-structured content mode** — the full attribute set, the registered extensions used, and
-the rule that consumers dispatch on the envelope rather than on transport-native metadata
-are the contract, and they are specified in
-[platform ADR-0002](https://github.com/xodeeq/xal-platform/blob/main/adr/0002-domain-event-envelope-contract.md).
-Event `type` is itself versioned (`auth.session-revoked.v1`) so the contract evolves
-additively. **The transport behind the envelope is a per-service decision** and is
-deliberately not fixed here.
+## 7. Async-first interaction and the versioned CloudEvents envelope — **[CI-enforceable]** (envelope) · **[review-only]** (edge declaration, until the registry gates it)
+
+**Effects travel as events.** Anything that changes another service's state happens by emitting a domain event, never by a synchronous call out of the service. A publisher never holds a list of its consumers (auth ADR-0001; auth ADR-0019 "why pull").
+
+**Event dependencies are realized by polling the publisher's feed** under the current transport (auth ADR-0019): a consumer's poll of `GET /events` is the event dependency itself, declared as such, with the fallback always "retry within the publisher's retention window". It is not a sync edge in the sense below.
+
+**Reads may be synchronous, narrowly.** A service may make a synchronous call for a **read only**, when the request cannot be served with acceptable staleness from its own data, and **one hop deep**. Two standing carve-outs: **token verification against the identity service** (JWKS offline verification under the `jwt` session strategy; `POST /tokens/introspect` under the `opaque` strategy), and **the gateway's forward-auth read** to the organization service.
+
+**Every sync edge is declared.** A service's registry entry lists each synchronous dependency as a **runtime dependency**, distinct from event dependencies, with a **timeout** and a **fallback** (serve stale, deny, or degrade). Composition treats a runtime dependency as a **hard co-deployment requirement**; a service that cannot honour its declared fallback must not advertise the edge (§9).
+
+**Every event is a CloudEvents v1.0 envelope in structured content mode** — the attribute set, the registered extensions and the rule that consumers dispatch on the envelope, never on transport-native metadata, are the contract in [platform ADR-0002](https://github.com/xodeeq/xal-platform/blob/main/adr/0002-domain-event-envelope-contract.md). `type` is versioned (`auth.session-revoked.v1`). **The transport behind the envelope is a per-service decision**; auth ADR-0019 is the reference. Rationale and alternatives: [platform ADR-0004](https://github.com/xodeeq/xal-platform/blob/main/adr/0004-async-first-interaction-model.md).
+
 - **Auth ref:** `src/Auth.Domain/Events/EventEnvelope.cs` (the envelope type),
   `IDomainEvent.cs` (versioned `EventType`), `AuthEvents.cs` (the events),
   `src/Auth.Infrastructure/Messaging/EventPublisher.cs` (the publisher port's only
   adapter — **a log-only seam: it records a few fields and does not yet construct the
   envelope**; completing that path is auth ADR-0019's work).
-- *Enforce:* schema-validate emitted envelopes against the CloudEvents shape; assert
-  `type` is versioned. **Not yet implementable — no service constructs an envelope
-  today**, which is precisely why the stale Auth-ref above went unnoticed: a convention
-  nothing emits against cannot detect that it is unimplemented. Buildable as soon as the
-  first service emits.
+- **Org ref (second publisher):** `urn:xal:service:org`; outbox + sequencer + `GET /events`; forward-auth target `GET /orgs/{orgId}/me` (xal-org spec §5, §6).
+- *Enforce:* schema-validate served envelopes against ADR-0002; assert `type` is versioned (buildable now). Edge declaration becomes **[CI-enforceable]** when the registry validates entries.
 
 ## 8. The purity principle — **[review-only]**
 The **domain layer never touches wall-clock time, randomness, or I/O** — these are
