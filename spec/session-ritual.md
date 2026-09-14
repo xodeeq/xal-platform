@@ -67,8 +67,33 @@ Run in order; if a step can't complete, stop and say why.
 8. **Suggest a concept note** if something substantial and durable was built and lacks
    one ([`concept-note-structure.md`](concept-note-structure.md)). Offer; don't
    auto-generate.
-9. **Push + open/update the PR**, linking the handoff and summarizing changes, gate
-   status, and open questions — only after steps 1–7 succeed.
+9. **Sync the work board.** A session that does not write to the board has not handed
+   off. Your `CLAUDE.md` names the board and where it lives; this spec deliberately does
+   not, because the board is a company concern and a swappable one — the obligation is to
+   record state outside the repo, not to use any particular tool.
+   For every item this session touched, and for any work it did that has no item:
+   - **Status** — where the work actually is. Done only if step 1's gates are green and
+     step 10's PR exists; "in review" is the honest state for work sitting in a PR.
+   - **The evidence link** — the PR, the ADR, the URL that resolves. **An item you cannot
+     give an artifact is not done.** Move it back or park it; never promote it and promise
+     the link later.
+   - **Routing and ownership fields**, and whatever your company records for cost.
+   - **Park, never bypass.** Work that stalled is parked in the state that names *who* it
+     waits on — the person, or the world. They are different queues.
+
+   **If you cannot reach the board** — no credential, no network, a repo not wired to it —
+   that is a park, not a skip. Record what the item *should* say in the handoff's "What's
+   next" under an explicit **BOARD NOT SYNCED** heading, and repeat it in the PR body. A
+   session that silently skips this leaves no trace that it did.
+
+   **Never record a field you did not verify.** An invented cost, a guessed routing value,
+   or an evidence link you have not opened is worse than an empty field: an empty field is
+   visibly missing, a wrong one is invisibly wrong.
+10. **Push + open/update the PR**, linking the handoff and summarizing changes, gate
+   status, and open questions — only after steps 1–9 succeed. **Name the board items you
+   moved and link them**: board state does not appear in the diff, so the PR body is the
+   only place a reviewer can check step 9 against artifacts rather than taking your word
+   for it.
 
 ## Forward briefs (ephemeral)
 
@@ -124,5 +149,5 @@ _Date: YYYY-MM-DD · Branch: <branch> · PR: <link or "pending">_
 
 A session is **wrapped** only when: gates green · no undocumented rigs · docs current ·
 open lessons triaged · handoff written · comprehension checks actually posed after it
-(and truthfully recorded) · a forward brief left or consciously skipped · branch pushed
-and PR open.
+(and truthfully recorded) · a forward brief left or consciously skipped · **the board
+synced, or the failure to sync recorded as BOARD NOT SYNCED** · branch pushed and PR open.
