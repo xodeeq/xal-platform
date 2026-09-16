@@ -54,10 +54,15 @@ detect drift. Record notable bumps in `adr/` or a session handoff.
   quality bar is: spec stays language-agnostic, links resolve, the scaffold stays
   self-consistent, and the sync round-trip works (see `sync/SYNC.md`). **Those four
   clauses are four of the gates in [`scripts/check.sh`](scripts/check.sh)**, which CI runs
-  verbatim — so the bar is enforced, not merely stated. The repo has since grown two more
-  (the declared-input meta-gate of ADR-0005, and plugin-manifest validation), so **the
-  script is the list and this sentence is not**: read the gate names off `check.sh`. Run it before you push; it
-  takes about a second. To change a gate, change the script, not the workflow.
+  verbatim — so the bar is enforced, not merely stated. The repo has since grown four more
+  (the declared-input meta-gate of ADR-0005, plugin-manifest validation, and the two that
+  ADR-0006 added for seeding), so **the script is the list and this sentence is not**: read
+  the gate names off `check.sh`. Run it before you push; it takes a few seconds. To change a
+  gate, change the script, not the workflow.
+
+  That "four more" is the second time this sentence has been wrong about its own count, which
+  is the argument for the rule next to it: a prose tally of gates goes stale the moment a gate
+  is added, and nothing fails when it does. **Read `check.sh`.**
 - **Gate 1 needs your help to stay decidable.** A service-language specific may appear
   in `spec/` only inside a labelled citation — a `**Auth ref:**` / `**Auth reference.**`
   region, or a paragraph carrying an explicit `<!-- auth-ref -->` marker for an
@@ -88,7 +93,24 @@ detect drift. Record notable bumps in `adr/` or a session handoff.
   and the `xal/docs/process-guide.md` duplication is gone. **The sync contract is now
   exercised by a real service, so a `spec/` change here breaks auth's build until auth
   syncs — bump `VERSION` deliberately.**
+- **Seeding (2026-09-16, S2): DONE.** [ADR-0006](adr/0006-repo-seeding.md) closed the
+  new-repo seeding gap. `scaffold/` is now `common/` + `lang/<language>/` + `seed-service.sh`,
+  so a seeded repo **arrives with its gate** — the gate script in the platform's gate order,
+  `.xal/gate-inputs`, CI wired to supply every declared input, and committed fixtures proving
+  the chain can fail naming which gate fired. `scripts/check-seed-set.sh` and
+  `gates/seed.test.sh` keep that true; `lang/go/` is the first overlay and
+  [`xodeeq/xal-org`](https://github.com/xodeeq/xal-org) is its first consumer, green on its
+  first CI run.
+
+  **Seeding is a one-shot copy and `sync/` does not cover it.** A later improvement to
+  `lang/go/scripts/check.sh` does not reach an already-seeded repo, and nothing diffs them.
+  That is deliberate — the gate script is a starting point a service **owns**, while `spec/`
+  is a contract it keeps tracking — but it is a real exposure, and it is where a future
+  "why is auth's gate different?" will lead.
 - **Next:** (1) lift the reusable `infra/` observability Terraform modules into a
   `scaffold/` module; (2) decide whether `sync/` should cover `.claude/` or whether that
   drift is accepted deliberately — needs an ADR (see `docs/lessons.md`); (3) a generic,
-  xal-stripped export for unrelated projects (separate effort).
+  xal-stripped export for unrelated projects (separate effort); (4) a second
+  `scaffold/lang/` overlay when a service picks a language other than Go — the split between
+  `common/` and `lang/` has been exercised once and `ci.yml` is the piece most likely to
+  belong on the other side of it (ADR-0006 revisit trigger 1).
