@@ -1,0 +1,23 @@
+# .xal/gate-inputs — the declared input contract for scripts/check.sh (<SERVICE>).
+#
+# Every gate in scripts/check.sh that needs something NOT in this repo declares it here, and
+# .xal/check-gate-inputs.sh asserts that every workflow invoking that script supplies it.
+# This file exists because a gate script cannot see its own callers: on 2026-08-12 the
+# reference service's drift gate gained a platform checkout, ci.yml got it, deploy.yml did
+# not, and production deploys were blocked for ~3.5h while CI on the same commit stayed
+# green. See xal-company ADR-0005.
+#
+# Format:  id | detect | required-in-ci | caller-pattern | description
+#   detect          command:<name> | env:<VAR> | none   (how check.sh discovers it)
+#   required-in-ci  yes = the gate FAILS when absent under CI=true; no = it skips
+#   caller-pattern  ERE every caller workflow must match, or `-` for runner-provided
+#
+# Adding a gate that needs an input and NOT adding it here fails the gate-inputs check
+# locally, before push. That is the point: declare it, then wire every caller. Both halves,
+# or neither counts.
+
+go-toolchain   | none                 | yes | actions/setup-go     | The Go toolchain pinned by go.mod's `toolchain` directive. Gates 1-7 (modules, format, vet, lint, test, coverage, audit) all shell out to `go` or `gofmt` directly, so nothing detects it and everything needs it.
+golangci-lint  | command:golangci-lint | yes | golangci-lint       | The aggregate linter for gate 4. Installed by the workflow at a pinned version; never `@latest`, because a linter that changes under you turns an unrelated PR red.
+govulncheck    | command:govulncheck  | yes | govulncheck          | The Go vulnerability database checker for gate 7. Queries the public vuln DB over the network; no credential.
+docker         | command:docker       | yes | -                    | A working Docker daemon for gate 8 (image build). Provided by the ubuntu-latest runner image, so no workflow step is required — but CI=true makes the gate mandatory, so a runner without Docker would fail it.
+platform-repo  | env:XAL_PLATFORM_DIR | yes | XAL_PLATFORM_DIR     | A checkout of the public xodeeq/xal-platform repo plus XAL_PLATFORM_DIR pointing at it, for gate 9 (vendored-spec drift). No credential: the repo is public deliberately. THIS IS THE INPUT SHAPE THAT CAUSED THE 2026-08-12 OUTAGE.

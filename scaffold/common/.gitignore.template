@@ -1,0 +1,8 @@
+# Coverage artifacts produced by the gate script.
+.coverage/
+
+# The platform checkout CI makes for the spec-drift gate (see .github/workflows/ci.yml).
+.xal-platform/
+
+# OS and editor noise.
+.DS_Store

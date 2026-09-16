@@ -1,0 +1,103 @@
+name: Deploy
+
+# Continuous DEPLOYMENT — kept deliberately SEPARATE from ci.yml so that pull-request runs
+# never touch production. The same Definition-of-Done gate (scripts/check.sh) must pass,
+# THEN the release step runs migrations, THEN the app deploys, THEN a smoke test proves the
+# live deployment works. A failed smoke fails the workflow loudly.
+#
+# ─────────────────────────────────────────────────────────────────────────────────────────
+# SEEDED DISPATCH-ONLY. READ THIS BEFORE ADDING THE PUSH TRIGGER.
+#
+# The platform's deployment conventions say CD is "from `main` only, after the gates" — this
+# workflow's shape is that convention, and it ships at seeding so the shape is not
+# reinvented later from memory. What it does NOT ship with is the `push: branches: [main]`
+# trigger, because a freshly seeded service has no deploy target: no app, no database, no
+# secrets. A push trigger here would turn every merge to main red from commit one, and a
+# signal that is always red is a signal everyone learns to ignore — which costs more than
+# having no signal at all.
+#
+# Un-comment the push trigger when BOTH human-only actions are done:
+#   * provisioning — the database and role on the client cluster, and the production secrets;
+#   * the deploy-host billing block is cleared (nothing in the estate deploys until it is).
+#
+# Both are a person's, not an agent's: spending and granting access are irreversible.
+# ─────────────────────────────────────────────────────────────────────────────────────────
+
+on:
+  # push:
+  #   branches: [main]
+  workflow_dispatch:
+
+# Never run two production deploys at once, and never cancel one mid-rollout.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Gate (scripts/check.sh)
+    runs-on: ubuntu-latest
+    env:
+      CI: "true" # makes the lint, audit, Docker and drift gates mandatory (never skipped)
+    steps:
+      - uses: actions/checkout@v4
+
+      # THIS MUST MIRROR ci.yml. Any workflow that runs check.sh has to supply every input
+      # the script's gates need, and CI=true above makes them all mandatory rather than
+      # skippable. Omitting one here is not a soft failure: the gate refuses to run, this job
+      # fails, and `needs: gate` blocks the deploy — while CI on the same commit stays green,
+      # so the PR looks entirely healthy. That is exactly the 2026-08-12 outage, and
+      # .xal/gate-inputs plus check.sh's gate 0 exist to make it fail before push instead.
+      - name: Check out the platform spec (public repo — no credential needed)
+        uses: actions/checkout@v4
+        with:
+          repository: xodeeq/xal-platform
+          path: .xal-platform
+
+      - name: Setup Go (pinned by go.mod)
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install golangci-lint (gate 4 input)
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+
+      - name: Install govulncheck (gate 7 input)
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+
+      - name: Run gates (scripts/check.sh)
+        env:
+          XAL_PLATFORM_DIR: .xal-platform
+        run: ./scripts/check.sh
+
+  deploy:
+    name: Migrate, deploy, smoke
+    needs: gate
+    runs-on: ubuntu-latest
+    steps:
+      # Deliberately a single failing step, not a half-written pipeline.
+      #
+      # The three steps this job will have are named in the message below, and each needs a
+      # provisioned target before it can be written honestly: migrations run as a release-step
+      # ARTIFACT (the same image, its `migrate` subcommand — never from the runtime container
+      # and never from app startup, idempotent by the migration tool's version table); then
+      # the deploy; then a post-deploy smoke test that fails the workflow on a broken
+      # round-trip.
+      #
+      # Writing them now against a host nobody has chosen would produce three steps that have
+      # never run, in a workflow nothing triggers — which reads, to anyone scanning the repo,
+      # exactly like a working deploy pipeline. A loud stop is the honest state.
+      - name: No deploy target provisioned
+        run: |
+          echo "::error::This service has no deploy target yet, so there is nothing to deploy to."
+          echo "The gate job above passed — the code is releasable; the destination does not exist."
+          echo
+          echo "This job becomes: (1) migrations as a release-step artifact,"
+          echo "                  (2) the deploy itself,"
+          echo "                  (3) a post-deploy smoke gate,"
+          echo "once provisioning and the billing block are cleared. Both are human-only."
+          echo "See the dispatch-only banner at the top of this workflow."
+          exit 1

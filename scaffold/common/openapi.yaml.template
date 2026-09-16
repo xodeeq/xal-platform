@@ -1,0 +1,19 @@
+# openapi.yaml — the HTTP source of truth for <SERVICE> (platform service-conventions §1).
+#
+# SEEDED AS A STUB, DELIBERATELY. §1 makes this file, not the code, the contract: routes are
+# generated from it or diffed against it, and the spec-vs-routes check is a gate. A service
+# with no openapi.yaml has nothing for that gate to compare against, so the file exists from
+# commit one and the first implementation session fills it from the admitted spec.
+#
+# `info.version` carries the contract version. Paths carry NO version prefix — the reference
+# service does not use one, and a prefix in one service and not another is the kind of
+# inconsistency a catalogue of composable services cannot afford.
+openapi: 3.1.0
+info:
+  title: <SERVICE>
+  version: 0.0.0
+  description: >-
+    Stub. The contract is written from the admitted spec (see docs/spec/service.md) in the
+    first implementation session. Until then this file exists so the spec-vs-routes gate has
+    a source of truth to fail against rather than nothing to compare.
+paths: {}

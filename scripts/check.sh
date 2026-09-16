@@ -406,12 +406,30 @@ gate_inputs_step() {
   bash .xal/check-gate-inputs.sh
 }
 
+# --- gates 6 + 7: the scaffold actually seeds a working gate ----------------------------
+# ADR-0006 makes scaffold/ the mechanism by which a new service repo arrives with its gate.
+# That turns "the scaffold ships a gate script" from a sentence into a property, and gate 3
+# above does not cover it: gate 3 checks that the scaffold's LINKS resolve, not that a
+# language overlay is complete enough to produce a repo whose CI runs anything.
+#
+# A missing file in an overlay is silent in the worst way — the seeded repo still builds and
+# still goes green, it simply enforces less than everyone believes. check-seed-set.sh
+# enumerates what an overlay must ship, and asserts by EXECUTION that the seeder refuses to
+# default a language, because a default would put a stack decision in a script.
+#
+# Paired with its fixture harness, in that order, the way xal-company pairs its rules: the
+# fixtures run FIRST, so "the rule is broken" is never mistaken for "the scaffold is broken".
+seed_fixtures_step() { bash gates/seed.test.sh; }
+seed_set_step()      { bash scripts/check-seed-set.sh; }
+
 # --- run the gates -------------------------------------------------------------
 gate "gate inputs declared + every caller wired"          gate_inputs_step
 gate "plugin manifests (claude plugin validate --strict)" plugin_manifests_step
 gate "language-agnostic spec (no .NET-isms as rules)"  spec_language_agnostic_step
 gate "links resolve (+ vendored-set rule)"             links_resolve_step
 gate "scaffold self-consistency"                       scaffold_consistency_step
+gate "seed-set fixtures (proven able to fail)"         seed_fixtures_step
+gate "seed sets complete (every language seeds a gate)" seed_set_step
 gate "sync round-trip"                                 sync_roundtrip_step
 
 summary

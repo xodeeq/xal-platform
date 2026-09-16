@@ -1,0 +1,89 @@
+name: CI
+
+# <SERVICE> CI. The Definition of Done is a single script — scripts/check.sh — which is the
+# one source of truth for "the gates": modules, format, vet, lint, race tests with coverage,
+# per-package coverage floors, a vulnerability audit, a Docker image build, and a
+# platform-spec drift check. CI invokes that exact script so "green locally" equals "green in
+# CI" byte for byte.
+#
+# TO CHANGE A GATE, CHANGE THE SCRIPT, NOT THIS FILE. The only thing this workflow adds is
+# the INPUTS a gate needs — a toolchain, a linter, a platform checkout — never gate logic.
+# Every one of those inputs is declared in .xal/gate-inputs, and check.sh's gate 0 asserts
+# that this workflow (and every other caller) supplies each one. Adding an input here without
+# declaring it there, or there without wiring it here, fails locally before push.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Gates (scripts/check.sh)
+    runs-on: ubuntu-latest
+    env:
+      CI: "true" # makes the lint, audit, Docker and drift gates mandatory (never skipped)
+    steps:
+      - uses: actions/checkout@v4
+
+      # Input for the spec-drift gate: this service VENDORS the platform spec into
+      # docs/platform/, and the gate diffs those read-only copies against the real spec.
+      # ORDERING MATTERS — this runs SECOND and into its own `path` so it cannot clobber the
+      # service checkout above (a second checkout without `path` cleans and takes over the
+      # workspace root). The path must stay INSIDE the workspace; actions/checkout rejects
+      # paths above it, which is why this is `.xal-platform` and not `../xal-platform`.
+      #
+      # No token, PAT or deploy key: xodeeq/xal-platform is PUBLIC precisely so that reading
+      # the spec needs no credential. Do not add a secret here.
+      #
+      # Unpinned on purpose — this takes the platform default branch at HEAD, which is what
+      # makes "the spec moved and this service hasn't synced" visible rather than silent.
+      - name: Check out the platform spec (public repo — no credential needed)
+        uses: actions/checkout@v4
+        with:
+          repository: xodeeq/xal-platform
+          path: .xal-platform
+
+      # Input for gates 1-7. The version comes from go.mod's `toolchain` directive, so the
+      # pin lives in the repo rather than in this file — one place to bump, and a local run
+      # uses the same toolchain CI does.
+      - name: Setup Go (pinned by go.mod)
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Input for gate 4. PINNED, never @latest: a linter that changes under you turns an
+      # unrelated PR red, and the person who has to explain it did not change any code.
+      - name: Install golangci-lint (gate 4 input)
+        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+
+      # Input for gate 7. Pinned for the same reason; the vulnerability DATABASE is live, as
+      # it must be, but the tool reading it is not.
+      - name: Install govulncheck (gate 7 input)
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+
+      # The whole Definition of Done, in one place. The runner has Docker, so the image-build
+      # gate runs here too. XAL_PLATFORM_DIR points the drift gate at the checkout above
+      # instead of the local-dev default of ../xal-platform; it is relative because check.sh
+      # cd's to the repo root before running any gate.
+      - name: Run gates (scripts/check.sh)
+        env:
+          XAL_PLATFORM_DIR: .xal-platform
+        run: ./scripts/check.sh
+
+      # The proof that the gate above can FAIL, and that it names which gate fired.
+      #
+      # It is a SEPARATE STEP rather than a gate inside check.sh for one mechanical reason:
+      # the harness runs check.sh, so calling it from check.sh would recurse forever. It runs
+      # after the real gate so a genuine failure is reported before a fixture failure, and
+      # the two are never confused.
+      #
+      # A gate that has never been seen to fail has not been tested — a rule matching nothing
+      # and a rule finding nothing emit byte-identical green.
+      - name: Prove the gates can fail (gates/check.test.sh)
+        env:
+          XAL_PLATFORM_DIR: .xal-platform
+        run: ./gates/check.test.sh
