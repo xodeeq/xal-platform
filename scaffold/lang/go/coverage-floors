@@ -1,0 +1,18 @@
+# coverage-floors — per-package line-coverage floors, enforced by scripts/check.sh gate 6.
+#
+# A FLOOR IS A RATCHET. It is set from the MEASURED percentage of the first green build, not
+# from an aspirational number, and it only ever goes UP. Guessing a floor produces one of two
+# useless states: so low it gates nothing, or so high that the first honest commit is red and
+# someone lowers it, which teaches everyone that the number is negotiable.
+#
+# A floor of 0 is COLLECT-ONLY: the package's coverage is measured and printed but not gated.
+# That is the honest state for a package with no tests yet — visible, not absent. It is not a
+# resting place; a package that gains tests gains a floor in the same PR.
+#
+# THE FILE IS A CLOSED WORLD. A package with measured statements and no record here fails the
+# gate, because "new code arrived ungated" and "coverage held" must not emit the same green.
+#
+# Format:  package (module-relative) | floor (percent, integer)
+
+internal/buildinfo | 100
+cmd/<SERVICE>      | 0

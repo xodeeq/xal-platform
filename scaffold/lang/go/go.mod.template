@@ -1,0 +1,12 @@
+module github.com/xodeeq/<SERVICE>
+
+// The language version. Kept one line below the toolchain pin so that what the code may use
+// and what compiles it are separately visible.
+go 1.25
+
+// THE TOOLCHAIN IS PINNED AND BUMPED DELIBERATELY. Without this directive the build uses
+// whatever Go happens to be installed, which differs between a developer's machine and the
+// runner — the same ambient-satisfaction problem that produced the gate-input outages, one
+// layer down. actions/setup-go reads this file, so CI and a local run use the same compiler
+// and the pin lives in the repo rather than in a workflow.
+toolchain go1.25.1

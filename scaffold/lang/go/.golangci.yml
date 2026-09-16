@@ -1,0 +1,16 @@
+# golangci-lint configuration for <SERVICE>. Enforced by scripts/check.sh gate 4.
+#
+# DELIBERATELY MINIMAL AT SEEDING. `standard` is errcheck, govet, ineffassign, staticcheck
+# and unused — the set that finds real defects with a near-zero false-positive rate, which is
+# what a gate needs. A gate nobody trusts gets disabled, and the fastest way to get there is
+# to seed a linter set tuned for a codebase that does not exist yet.
+#
+# NOT ENABLED, AND WHY: `depguard` is the linter that enforces the layering rule — the inner
+# domain layer depending on nothing outward. It belongs here, and it arrives in the PR that
+# creates the first domain package. Configuring a layering linter before there are layers
+# means writing rules against imaginary packages, and a rule that matches nothing passes
+# exactly as convincingly as one that works.
+version: "2"
+
+linters:
+  default: standard

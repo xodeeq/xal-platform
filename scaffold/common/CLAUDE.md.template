@@ -1,8 +1,11 @@
 # CLAUDE.md — <SERVICE> Service (living source of truth)
 
-> **Scaffold template.** Rename to `CLAUDE.md` and replace every `<…>` placeholder for this
-> service. Keep the section structure — it is the shape every xal service's context follows
-> (auth is the reference). Delete this banner when done.
+> **Seeded from `xal-platform/scaffold/`.** The seeder filled the service's name and the
+> sections that are true of every xal service. **Every remaining `<…>` placeholder is a
+> section this service has not decided yet** — they are not decoration, and a session that
+> needs one answers it deliberately (usually in an ADR) rather than inventing prose to fill
+> the gap. Keep the section structure: it is the shape every xal service's context follows,
+> and auth is the reference realization. Delete this banner when no `<…>` remains.
 
 This file is the durable context for the `<SERVICE>` service. Keep it current as the service
 evolves. For the shared engineering lifecycle, see the vendored process guide at
@@ -12,16 +15,33 @@ evolves. For the shared engineering lifecycle, see the vendored process guide at
 
 ## Start here (every session — read this before touching code)
 
-1. **Read the latest handoff first.** Handoffs live in `docs/sessions/NN.md`; open the
+1. **Read `xal-company/status/current.md` before anything else.** It is the single record of
+   where Xal is: the active track, the next single action, the research lane, and what is
+   waiting on Sodiq. Every session, in **any** Xal repo, reads it first. Sibling repos live
+   under `~/Engineering/xal/`; a headless session with only this repo checked out reads it
+   through the API:
+
+   ```bash
+   gh api repos/xodeeq/xal-company/contents/status/current.md --jq '.content' | base64 -d
+   ```
+
+   **A session that finishes work updates that file in the same sitting** — `updated`,
+   `next_action`, `blockers`, and one dated line in the Log — as a commit in `xal-company`
+   (a PR via the API from a headless run). A summary in chat is not an update.
+2. **Read the latest handoff.** Handoffs live in `docs/sessions/NN.md`; open the
    **highest-numbered** one — it tells you what the last session did, what's next, and any
    open questions. Don't reconstruct state from the codebase; the handoff is the entry point.
    Also read any **advisory brief** in `docs/briefs/` (ephemeral — delete the one you consume
    once your plan is approved). The `/begin-session` command runs this ritual.
-2. **This service's testing discipline is non-negotiable — see "How we work" below.** You are
+3. **Read the spec pointer and the plan.** `docs/spec/service.md` names the admitted spec
+   this service is built against, by `service` + `spec_version` + ledger digest;
+   `docs/plan/plan.md` is the ordered session list and carries each session's status and
+   evidence. Between them they say what this service must be and where the build is.
+4. **This service's testing discipline is non-negotiable — see "How we work" below.** You are
    expected to know it from the start, not rediscover it.
-3. **Check "Open design decisions" below** before planning — anything listed there is a
+5. **Check "Open design decisions" below** before planning — anything listed there is a
    *known* gap, not something to assume is already designed.
-4. **One concern per session.** Each session takes one coherent, gated slice and wraps with
+6. **One concern per session.** Each session takes one coherent, gated slice and wraps with
    `/wrap-session`.
 
 ## How we work — <testing discipline> (non-negotiable)

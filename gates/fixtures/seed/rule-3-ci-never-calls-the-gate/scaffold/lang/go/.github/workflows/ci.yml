@@ -1,0 +1,5 @@
+name: CI
+jobs:
+  check:
+    steps:
+      - run: echo "gates go here eventually"

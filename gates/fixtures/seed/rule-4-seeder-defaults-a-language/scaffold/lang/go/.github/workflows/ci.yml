@@ -1,0 +1,6 @@
+name: CI
+jobs:
+  check:
+    steps:
+      - run: ./scripts/check.sh
+      - run: ./gates/check.test.sh
