@@ -1,0 +1,59 @@
+# board-add.yml — put every new issue and PR in this repo on the XCOS Ops board.
+#
+# WHY THIS IS A FILE AND NOT A SETTING. GitHub Projects has an "Auto-add to project"
+# workflow that does the same job from the Projects UI — and it takes exactly ONE
+# repository (verified 2026-09-17: the picker is a single-select listbox, and there is no
+# way to add a second auto-add workflow). So the UI could never cover this estate, and the
+# rule lived somewhere `scripts/board.sh` cannot read or assert, which P1 calls a defect.
+#
+# THE CREDENTIAL, AND WHAT IT COST. `XAL_PROJECT_TOKEN` is a CLASSIC PAT with `project`
+# AND `repo`. Three narrower options were tried and each is ruled out by evidence, not by
+# assumption — keep this list, because every one of them looks like it should work:
+#
+#   * GITHUB_TOKEN — no Projects permission exists for it on a user-owned project.
+#   * A fine-grained PAT — searching `project` in its account-permission picker returns
+#     "No items available". Fine-grained tokens cannot reach user-owned projects at all.
+#   * A classic PAT with `project` but NOT `repo` — fails. Both actions/add-to-project AND
+#     a direct addProjectV2ItemById with the node id taken straight from the event payload
+#     return `NOT_FOUND: Could not resolve to a node with the global id of 'PR_...'`. That
+#     second test is the informative one: it proves the MUTATION needs repo read, not the
+#     action's own lookup, so no amount of avoiding the lookup helps.
+#
+# `repo` is full control of every private repo on the account, which is a real cost and is
+# accepted deliberately rather than by drift. It expires 2026-12-16, declared in
+# .xal/gate-inputs and enforced by gate 0. The narrow long-term answer is a GitHub App of
+# our own (platform ADR-0008 defers one); this is the interim.
+#
+# The mutation is called directly rather than through actions/add-to-project: one less
+# third-party dependency, and the failure surfaces as a plain API error.
+name: Board
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+
+# One add at a time per item; a re-run must not race. Adding an item that is already on
+# the board is a no-op that returns the existing item, so this is safe to repeat.
+concurrency:
+  group: board-add-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  add-to-board:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add the item to XCOS Ops
+        env:
+          GH_TOKEN: ${{ secrets.XAL_PROJECT_TOKEN }}
+          CONTENT_ID: ${{ github.event.issue.node_id || github.event.pull_request.node_id }}
+        run: |
+          gh api graphql \
+            -f query='mutation($project:ID!, $content:ID!) {
+              addProjectV2ItemById(input: {projectId: $project, contentId: $content}) {
+                item { id }
+              }
+            }' \
+            -f project="PVT_kwHOA7GFks4BgH2f" \
+            -f content="$CONTENT_ID"
