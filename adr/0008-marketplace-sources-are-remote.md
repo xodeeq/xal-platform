@@ -90,6 +90,22 @@ The format becomes:
 id | detect | required-in-ci | caller-pattern | expires | description
 ```
 
+**3b. `caller-pattern` may name the workflow it applies to** — `board-add.yml:secrets.XAL_PROJECT_TOKEN`
+asserts that *that file* exists and matches, and says nothing about the gate script's callers.
+
+> **This clause was added while implementing decision 3, not when this ADR was drafted, and
+> the discovery is worth keeping.** `.xal/gate-inputs` was built to answer exactly one
+> question — *does every caller of the gate script supply what that script needs?* — so a
+> repo's other workflows had no input contract at all. Both credentials this ADR is about
+> are supplied to workflows that never invoke `scripts/check.sh`: the marketplace read token
+> to a future plugin-install step, and the board's project token to `board-add.yml`.
+> Declaring them the original way would have forced `ci.yml` and `deploy.yml` to reference
+> secrets they have no use for — a false wiring, to satisfy a checker, in the file whose
+> whole purpose is to stop false wiring. **A manifest that can only describe one script's
+> inputs cannot hold a repo's credentials**, which is what decision 3 asked it to do. The
+> clause is the smallest change that makes the decision implementable, and it closes a
+> blind spot that predates this ADR.
+
 **4. Rotation is a dated obligation, not a reminder.** Because the expiry is data rather than
 prose, the date is checkable by the same mechanism that checks every other gate input, and it
 fails **before** the token lapses rather than at the first red checkout.
@@ -135,6 +151,13 @@ that is missed.
 - **Negative.** Three repos and the seed fixtures carry a vendored `check-gate-inputs.sh` and
   a `gate-inputs` manifest; a sixth field touches all of them in one change. The replica-parity
   gate covers the script, not the manifests.
+- **A consequence that only appeared in the build, and is kept as a property:** the manifest
+  **refuses to hold a credential whose consumer does not exist yet**. A workflow-scoped record
+  naming a missing workflow fails, by the same reasoning as "zero callers is never a pass" —
+  a record pointing at nothing asserts nothing. So `XAL_READ_TOKEN` cannot be declared until
+  the plugin-install step it feeds is written, and its expiry stays in `status/current.md`
+  until then. That is the right trade — a declaration that asserts nothing is worse than an
+  honest note — but it means this ADR does not fully close its own gap on the day it lands.
 - **Deferred.** (1) A GitHub App in place of the PAT — *trigger:* a second private marketplace
   or a missed rotation. (2) Real per-repo pinning, still the open item from ADR-0007 — a remote
   source does not fix it. (3) Whether the extracted public process repo hosts a marketplace of
