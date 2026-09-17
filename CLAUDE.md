@@ -108,8 +108,11 @@ detect drift. Record notable bumps in `adr/` or a session handoff.
   is a contract it keeps tracking — but it is a real exposure, and it is where a future
   "why is auth's gate different?" will lead.
 - **Next:** (1) lift the reusable `infra/` observability Terraform modules into a
-  `scaffold/` module; (2) decide whether `sync/` should cover `.claude/` or whether that
-  drift is accepted deliberately — needs an ADR (see `docs/lessons.md`); (3) a generic,
+  `scaffold/` module; (2) ~~decide whether `sync/` should cover `.claude/`~~ — **DONE 2026-09-17,
+  [ADR-0007](adr/0007-claude-config-sync-boundary.md):** it does not. A plugin-distributed
+  normative core plus a service-owned overlay. The follow-on work is
+  [ADR-0008](adr/0008-marketplace-sources-are-remote.md)'s `expires` field in
+  `.xal/gate-inputs`, which is decided and not yet built; (3) a generic,
   xal-stripped export for unrelated projects (separate effort); (4) a second
   `scaffold/lang/` overlay when a service picks a language other than Go — the split between
   `common/` and `lang/` has been exercised once and `ci.yml` is the piece most likely to
