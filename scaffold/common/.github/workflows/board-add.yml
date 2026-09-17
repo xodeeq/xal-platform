@@ -1,0 +1,41 @@
+# board-add.yml — put every new issue and PR in this repo on the XCOS Ops board.
+#
+# WHY THIS IS A FILE AND NOT A SETTING. GitHub Projects has an "Auto-add to project"
+# workflow that does the same job from the Projects UI — and it takes exactly ONE
+# repository (verified 2026-09-17: the picker is a single-select listbox, and there is no
+# way to add a second auto-add workflow). So the UI could never cover this estate's four
+# repos, and the rule lived somewhere `scripts/board.sh` cannot read or assert, which P1
+# calls a defect: anything about how the company runs that is not in the repo is a defect.
+#
+# This is the repo-side replacement. It is committed, reviewable in a diff, and applies to
+# every repo that carries it.
+#
+# THE CREDENTIAL. `actions/add-to-project` writes to a user-owned project, and the built-in
+# GITHUB_TOKEN cannot do that — there is no Projects permission for it. Fine-grained PATs
+# cannot either: "project" returns no items in their account-permission list (verified
+# 2026-09-17, in the picker). So XAL_PROJECT_TOKEN is a CLASSIC PAT with the `project`
+# scope and nothing else. That scope is broader than this repo — it covers every project
+# the owner can reach — and it is deliberately NOT paired with `repo`, so the token cannot
+# touch code. Its expiry is declared in .xal/gate-inputs and checked by gate 0.
+name: Board
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+
+# One add at a time per item; a re-run must not create a duplicate row.
+concurrency:
+  group: board-add-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  add-to-board:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add the item to XCOS Ops
+        uses: actions/add-to-project@v1.0.2
+        with:
+          project-url: https://github.com/users/xodeeq/projects/4
+          github-token: ${{ secrets.XAL_PROJECT_TOKEN }}
