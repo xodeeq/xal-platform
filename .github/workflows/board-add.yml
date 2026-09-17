@@ -44,16 +44,70 @@ jobs:
   add-to-board:
     runs-on: ubuntu-latest
     steps:
+      # ADDING IS NOT ENOUGH — the item must arrive with its fields honest.
+      #
+      # An auto-added item lands with an empty Department and no Primary artifact, which
+      # board-hygiene.sh fails. That is not a theory: on 2026-09-14 the gate's first run
+      # found 18 violations across 9 items, EVERY one of them auto-added, and the five
+      # items this very workflow added on the day it shipped repeated it exactly. Adding
+      # the item and leaving it empty trades a coverage defect for a hygiene defect.
+      #
+      # So both fields are set here, at add time, from what the event already knows:
+      #   * Primary artifact = the issue/PR URL. For a code change that IS the evidence,
+      #     so there is no case where a session could do better.
+      #   * Department = engineering, as a DEFAULT and not a claim. Every repo carrying
+      #     this workflow is a code repo, so it is right far more often than empty is —
+      #     and a session that knows better corrects it at wrap. An empty field fails the
+      #     gate; a sensible default that is occasionally wrong does not, and is visible.
+      #
+      # The ids below are the live board's, defined by scripts/board.sh in xal-company.
+      # If a field is ever deleted and recreated its id changes and this step fails loudly
+      # rather than silently skipping — which is the behaviour to keep.
       - name: Add the item to XCOS Ops
         env:
           GH_TOKEN: ${{ secrets.XAL_PROJECT_TOKEN }}
           CONTENT_ID: ${{ github.event.issue.node_id || github.event.pull_request.node_id }}
+          CONTENT_URL: ${{ github.event.issue.html_url || github.event.pull_request.html_url }}
         run: |
-          gh api graphql \
+          set -euo pipefail
+
+          PROJECT_ID="PVT_kwHOA7GFks4BgH2f"
+          DEPARTMENT_FIELD="PVTSSF_lAHOA7GFks4BgH2fzhabnMI"
+          DEPARTMENT_ENGINEERING="21c2b94c"
+          ARTIFACT_FIELD="PVTF_lAHOA7GFks4BgH2fzhabmUo"
+
+          # Adding an item already on the board returns the existing item, so this is
+          # idempotent and safe to re-run.
+          ITEM_ID="$(gh api graphql \
             -f query='mutation($project:ID!, $content:ID!) {
               addProjectV2ItemById(input: {projectId: $project, contentId: $content}) {
                 item { id }
               }
             }' \
-            -f project="PVT_kwHOA7GFks4BgH2f" \
-            -f content="$CONTENT_ID"
+            -f project="$PROJECT_ID" \
+            -f content="$CONTENT_ID" \
+            --jq '.data.addProjectV2ItemById.item.id')"
+
+          echo "item: $ITEM_ID"
+
+          gh api graphql \
+            -f query='mutation($project:ID!, $item:ID!, $field:ID!, $option:String!) {
+              updateProjectV2ItemFieldValue(input: {
+                projectId: $project, itemId: $item, fieldId: $field,
+                value: { singleSelectOptionId: $option }
+              }) { projectV2Item { id } }
+            }' \
+            -f project="$PROJECT_ID" -f item="$ITEM_ID" \
+            -f field="$DEPARTMENT_FIELD" -f option="$DEPARTMENT_ENGINEERING" > /dev/null
+          echo "Department: engineering (default — correct it at wrap if this is not engineering work)"
+
+          gh api graphql \
+            -f query='mutation($project:ID!, $item:ID!, $field:ID!, $text:String!) {
+              updateProjectV2ItemFieldValue(input: {
+                projectId: $project, itemId: $item, fieldId: $field,
+                value: { text: $text }
+              }) { projectV2Item { id } }
+            }' \
+            -f project="$PROJECT_ID" -f item="$ITEM_ID" \
+            -f field="$ARTIFACT_FIELD" -f text="$CONTENT_URL" > /dev/null
+          echo "Primary artifact: $CONTENT_URL"
