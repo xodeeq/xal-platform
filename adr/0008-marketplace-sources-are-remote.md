@@ -134,6 +134,40 @@ no date to track. Deferred, not rejected — it is more machinery than one priva
 justifies today. *Trigger:* a second private marketplace, or the first credential rotation
 that is missed.
 
+> **STATUS ADDENDUM 2026-09-17 — this deferral's trigger has already fired, and the App is
+> now owed rather than optional.** Wiring the board workflow the same day needed a second
+> credential, and every narrow option was eliminated by test, not by argument:
+> `GITHUB_TOKEN` has no Projects permission for a user-owned project; a **fine-grained PAT
+> cannot reach user-owned projects at all** (searching `project` in its account-permission
+> picker returns "No items available"); and a classic PAT with `project` but **not** `repo`
+> fails the mutation with `NOT_FOUND`, proven twice — through `actions/add-to-project` and
+> through a direct `addProjectV2ItemById` passing the node id straight from the event
+> payload, which is what establishes that the **mutation** needs repository read rather
+> than the action's own lookup.
+>
+> So `XAL_PROJECT_TOKEN` carries `repo` — **full control of every private repository on the
+> account, to tick a box on a board.** That is a genuinely poor ratio of privilege to
+> purpose, and it is recorded here as accepted-under-protest rather than settled: it was
+> taken because the alternative was leaving the P1 defect open, on the same reasoning as
+> decision 5 of 2026-09-17, and because a token that expires in 90 days is a bounded
+> mistake where a permanent one would not be.
+>
+> **A GitHub App of our own is the fix**, and the confusion worth pre-empting: the *Claude*
+> GitHub App installed on these repos is **Anthropic's**, serving the PR-review workflows.
+> Its installation token is not ours to mint and carries no Projects permission — it does
+> not and cannot cover this.
+>
+> **Concrete shape when it is picked up:** register a GitHub App owned by `xodeeq`;
+> permissions **Projects: read & write** (account level) plus **Contents: read** and
+> **Metadata: read** on the five repos, and nothing else; install it; store the App ID and
+> private key as secrets; mint a short-lived installation token in `board-add.yml` and use
+> it in place of `XAL_PROJECT_TOKEN`. That deletes a `repo`-scoped credential from five
+> repositories and removes an expiry date from the rotation calendar.
+>
+> **Hard deadline rather than a soft trigger: 2026-12-16**, when `XAL_PROJECT_TOKEN`
+> expires. Doing the App instead of rotating turns a chore into the fix. Tracked on the
+> board; this addendum is the reasoning so that session does not start from scratch.
+
 ## Consequences
 
 - **Positive.** The plugin resolves anywhere, including a headless CI checkout, so ADR-0007's
