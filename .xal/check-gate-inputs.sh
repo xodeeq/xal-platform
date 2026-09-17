@@ -114,6 +114,27 @@ warn() { printf '%s  ⚠ %s%s\n' "$YEL" "$1" "$RST"; }
 # bash 3.2 (the macOS system bash) as well as on the CI runner's bash 5.
 IDS=(); DETECTS=(); REQS=(); PATTERNS=(); EXPIRES=(); DESCS=()
 
+# NREC counts the records, and using it instead of an array-length expansion is not a
+# style preference.
+#
+# READ THIS BEFORE "SIMPLIFYING" IT BACK. Expanding an array length WITH A DEFAULT — the
+# hash-length form followed by :-0 — is not valid syntax. bash 3.2 (the macOS system bash)
+# tolerates it; bash 5 (the CI runner) rejects it as "bad substitution". Because this
+# script runs without `set -e`, that rejection is NOT fatal: the guarded test silently
+# evaluates false and the whole section it guards is SKIPPED.
+#
+# That is not hypothetical. On 2026-09-17 the CI log of a GREEN run showed this checker
+# emitting "bad substitution" twice and reporting a tick anyway. Section C — "every caller
+# must supply every CI-required input", the half written to prevent the 2026-08-12 outage —
+# had been asserting NOTHING on every CI run since this script was written, while working
+# perfectly on the author's machine.
+#
+# A gate that passes because it matched nothing, inside the gate built to stop exactly
+# that. It was found only because a fixture suite ran the checker IN CI against trees where
+# a rule was required to fire; the script was green locally, green in CI, and wrong in CI,
+# so nothing else in the estate could have surfaced it.
+NREC=0
+
 lineno=0
 while IFS= read -r raw || [ -n "$raw" ]; do
   lineno=$((lineno + 1))
@@ -147,6 +168,7 @@ while IFS= read -r raw || [ -n "$raw" ]; do
   esac
 
   IDS+=("$f_id"); DETECTS+=("$f_det"); REQS+=("$f_req"); PATTERNS+=("$f_pat"); EXPIRES+=("$f_exp"); DESCS+=("$f_dsc")
+  NREC=$((NREC + 1))
 done < "$MANIFEST"
 
 # --- A. every input the gate script actually needs must be DECLARED -----------
@@ -171,9 +193,9 @@ declared="$(printf '%s\n' "${DETECTS[@]:-}" | grep -v '^none$' | sort -u)"
 # not leniency — a warning that fires on every correctly-declared credential is noise, and
 # noise is how a real stale declaration gets scrolled past.
 scoped_detects=""
-if [ "${#IDS[@]:-0}" -gt 0 ]; then
+if [ "$NREC" -gt 0 ]; then
   i=0
-  while [ "$i" -lt "${#IDS[@]}" ]; do
+  while [ "$i" -lt "$NREC" ]; do
     case "${PATTERNS[$i]}" in
       */*) ;;
       *.yml:*|*.yaml:*) scoped_detects="${scoped_detects}${DETECTS[$i]}"$'\n' ;;
@@ -225,10 +247,10 @@ day_number() {
   }'
 }
 
-if [ "${#IDS[@]:-0}" -gt 0 ]; then
+if [ "$NREC" -gt 0 ]; then
   today_n="$(day_number "$today")"
   i=0
-  while [ "$i" -lt "${#IDS[@]}" ]; do
+  while [ "$i" -lt "$NREC" ]; do
     exp="${EXPIRES[$i]}"
     pat="${PATTERNS[$i]}"
 
@@ -284,11 +306,11 @@ fi
 
 # --- C. every caller must supply every CI-required input ----------------------
 ncheck=0
-if [ -n "$callers" ] && [ "${#IDS[@]:-0}" -gt 0 ]; then
+if [ -n "$callers" ] && [ "$NREC" -gt 0 ]; then
   while IFS= read -r wf; do
     [ -n "$wf" ] || continue
     i=0
-    while [ "$i" -lt "${#IDS[@]}" ]; do
+    while [ "$i" -lt "$NREC" ]; do
       if [ "${REQS[$i]}" = "yes" ]; then
         pat="${PATTERNS[$i]}"
         if [ "$pat" = "-" ]; then
@@ -314,9 +336,9 @@ fi
 # A missing workflow is a FAILURE, not a skip — the same reasoning as "zero callers is
 # never a pass". A record pointing at a file that does not exist asserts nothing, and would
 # report green forever while the credential it describes reached no workflow at all.
-if [ "${#IDS[@]:-0}" -gt 0 ]; then
+if [ "$NREC" -gt 0 ]; then
   i=0
-  while [ "$i" -lt "${#IDS[@]}" ]; do
+  while [ "$i" -lt "$NREC" ]; do
     pat="${PATTERNS[$i]}"
     case "$pat" in
       -|*/*) ;;
@@ -351,5 +373,5 @@ fi
 
 ncallers="$(printf '%s\n' "$callers" | grep -c . || true)"
 printf '  %s input(s) declared; %s caller(s) of %s; %s caller×input assertion(s) — all satisfied\n' \
-  "${#IDS[@]:-0}" "$ncallers" "$GATE_SCRIPT" "$ncheck"
+  "$NREC" "$ncallers" "$GATE_SCRIPT" "$ncheck"
 exit 0
